@@ -26,27 +26,11 @@ import { mapRosterFromRow, type RosterRow } from '@/lib/types/database-rows';
 import type { Roster, CodmMode, ParsedScoreboardPlayer } from '@/lib/types/database';
 import { MatchMapCard } from '@/components/match/MatchMapCard';
 import { toast } from '@/lib/toast';
+import { CODM_MAP_NAMES, CODM_MODES, CODM_REGIONS } from '@/lib/codm/constants';
 
-const MAP_NAMES = [
-  'Hacienda',
-  'Coastal',
-  'Crossroads Strike',
-  'Arsenal',
-  'Slums',
-  'Skidrow',
-  'Summit',
-  'Highrise',
-  'Rust',
-  'Hackney Yard',
-  'Pine',
-  'Scrapyard',
-  'Raid',
-  'Terminal',
-  'Standoff',
-] as const;
 
-const MODES: CodmMode[] = ['Hardpoint', 'Search & Destroy', 'Control'];
-const REGIONS = ['EU', 'NA', 'APAC', 'MENA'] as const;
+const MODES: CodmMode[] = [...CODM_MODES];
+const REGIONS = [...CODM_REGIONS] as const;
 
 interface MapEntry {
   id: string;
@@ -137,7 +121,7 @@ function SortableMapRow({ map, index, onChange, onRemove }: SortableMapRowProps)
         className="flex-1 rounded-input border border-white/[0.1] bg-[#0D0D10] px-2 py-1.5 text-sm text-[#FAFAFA] focus:border-brand focus:outline-none"
       >
         <option value="">Select map</option>
-        {MAP_NAMES.map((name) => (
+        {CODM_MAP_NAMES.map((name) => (
           <option key={name} value={name}>
             {name}
           </option>

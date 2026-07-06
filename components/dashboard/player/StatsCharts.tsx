@@ -20,6 +20,7 @@ export interface PlayerStatData {
   kd: number;
   assists: number;
   objTime: number;
+  objTimeLabel?: string;
   points: number;
   isMvp: boolean;
 }
