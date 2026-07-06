@@ -142,24 +142,27 @@ const NAV_BY_ROLE: Record<UserRole, NavLink[]> = {
     { href: '/dashboard/manager/matches', label: 'Matches', icon: <CalendarIcon /> },
     { href: '/dashboard/manager/roster', label: 'Roster', icon: <UsersIcon /> },
     { href: '/dashboard/manager/results', label: 'Results', icon: <ChartIcon /> },
+    { href: '/dashboard/profile', label: 'Profile', icon: <UserIcon /> },
   ],
   player: [
     { href: '/dashboard/player', label: 'Overview', icon: <GridIcon /> },
     { href: '/dashboard/player/calendar', label: 'Calendar', icon: <CalendarIcon /> },
     { href: '/dashboard/player/tasks', label: 'Tasks', icon: <CheckIcon /> },
     { href: '/dashboard/player/stats', label: 'My Stats', icon: <ChartIcon /> },
-    { href: '/dashboard/player/profile', label: 'Profile', icon: <UserIcon /> },
+    { href: '/dashboard/profile', label: 'Profile', icon: <UserIcon /> },
   ],
   coach: [
     { href: '/dashboard/coach', label: 'Overview', icon: <GridIcon /> },
     { href: '/dashboard/coach/tasks', label: 'Create Task', icon: <PlusIcon /> },
     { href: '/dashboard/coach/sessions', label: 'Sessions', icon: <CalendarIcon /> },
     { href: '/dashboard/coach/chat', label: 'Chat', icon: <MessageIcon /> },
+    { href: '/dashboard/profile', label: 'Profile', icon: <UserIcon /> },
   ],
   staff: [
     { href: '/dashboard/staff', label: 'Overview', icon: <GridIcon /> },
     { href: '/dashboard/staff/tasks', label: 'Tasks', icon: <CheckIcon /> },
     { href: '/dashboard/staff/chat', label: 'Chat', icon: <MessageIcon /> },
+    { href: '/dashboard/profile', label: 'Profile', icon: <UserIcon /> },
   ],
   admin: [
     { href: '/dashboard/admin', label: 'Overview', icon: <GridIcon /> },
@@ -167,6 +170,8 @@ const NAV_BY_ROLE: Record<UserRole, NavLink[]> = {
     { href: '/dashboard/admin/calendar', label: 'Calendar', icon: <CalendarIcon /> },
     { href: '/dashboard/admin/users', label: 'Users', icon: <UsersIcon /> },
     { href: '/dashboard/admin/rosters', label: 'Rosters', icon: <ShieldIcon /> },
+    { href: '/dashboard/admin/chat', label: 'Chat', icon: <MessageIcon /> },
+    { href: '/dashboard/profile', label: 'Profile', icon: <UserIcon /> },
   ],
 };
 
@@ -236,25 +241,16 @@ function SidebarContent({
       </nav>
 
       <div className="flex items-center gap-3 border-t border-white/[0.07] p-4">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/[0.08] text-xs font-medium uppercase text-[rgba(250,250,250,0.7)]">
+        <Link href="/dashboard/profile" onClick={onNavigate} className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/[0.08] text-xs font-medium uppercase text-[rgba(250,250,250,0.7)] ring-2 ring-transparent transition-all hover:ring-brand">
           {avatarUrl ? (
-            <SupabaseImage
-              src={avatarUrl}
-              alt={username ?? 'avatar'}
-              width={32}
-              height={32}
-              className="h-full w-full object-cover"
-            />
+            <SupabaseImage src={avatarUrl} alt={username ?? 'avatar'} width={32} height={32} className="h-full w-full object-cover" />
           ) : (
             (username ?? '?').slice(0, 1)
           )}
-        </span>
+        </Link>
         <span className="truncate text-sm text-[rgba(250,250,250,0.85)]">{username ?? 'Unnamed'}</span>
         <form action={signOut} className="ml-auto">
-          <button
-            type="submit"
-            className="text-xs text-[rgba(250,250,250,0.3)] transition-colors hover:text-white"
-          >
+          <button type="submit" className="text-xs text-[rgba(250,250,250,0.3)] transition-colors hover:text-white">
             Log out
           </button>
         </form>

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { cn } from '@/lib/utils';
 import { toast } from '@/lib/toast';
-import { approveApplication, rejectApplication } from '@/app/dashboard/(shell)/admin/applications/actions';
+import { approveApplication, rejectApplication, deleteApplication } from '@/app/dashboard/(shell)/admin/applications/actions';
 import type { ApplicationStatus, UserRole } from '@/lib/types/database';
 
 export interface ApplicationQueueItem {
@@ -90,6 +90,19 @@ export function ApplicationsQueue({
     setApplications((prev) =>
       prev.map((a) => (a.id === app.id ? { ...a, status: 'rejected', adminNote: note || null } : a))
     );
+  }
+
+  async function handleDelete(app: ApplicationQueueItem): Promise<void> {
+    if (!confirm(`Delete ${app.fullName ?? app.username ?? 'this'}'s application? This will reset their status to pending.`)) return;
+    setActingId(app.id);
+    const result = await deleteApplication(app.id, app.userId);
+    setActingId(null);
+    if (!result.success) {
+      toast.error(result.error ?? 'Could not delete application.');
+      return;
+    }
+    toast.success('Application deleted.');
+    setApplications((prev) => prev.filter((a) => a.id !== app.id));
   }
 
   return (
@@ -192,6 +205,14 @@ export function ApplicationsQueue({
                     {app.adminNote ? ` · ${app.adminNote}` : ''}
                   </p>
                 )}
+                <button
+                  type="button"
+                  onClick={() => void handleDelete(app)}
+                  disabled={actingId === app.id}
+                  className="mt-2 text-xs text-red-400 hover:underline disabled:opacity-50"
+                >
+                  Delete application
+                </button>
               </div>
             );
           })}

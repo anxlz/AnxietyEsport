@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type ReactElement } from 'react';
+import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { mapNotificationFromRow, type NotificationRow } from '@/lib/types/database-rows';
 import type { Notification } from '@/lib/types/database';
@@ -8,12 +9,12 @@ import { cn } from '@/lib/utils';
 
 interface NotificationBellProps {
   userId: string;
+  username: string | null;
 }
 
 function relativeTime(isoDate: string): string {
   const diffMs = Date.now() - new Date(isoDate).getTime();
   const diffSec = Math.floor(diffMs / 1000);
-
   if (diffSec < 60) return 'just now';
   const diffMin = Math.floor(diffSec / 60);
   if (diffMin < 60) return `${diffMin} min ago`;
@@ -27,17 +28,21 @@ function NotificationIcon({ type }: { type: Notification['type'] }): ReactElemen
   if (type === 'application_approved' || type === 'meeting_approved' || type === 'task_completed') {
     return (
       <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="#4ADE80" strokeWidth={2} strokeLinecap="round">
-        <circle cx="12" cy="12" r="9" />
-        <path d="M8.5 12.5l2.3 2.3 4.7-5.1" />
+        <circle cx="12" cy="12" r="9" /><path d="M8.5 12.5l2.3 2.3 4.7-5.1" />
       </svg>
     );
   }
   if (type === 'application_rejected' || type === 'meeting_rejected') {
     return (
       <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="#F87171" strokeWidth={2} strokeLinecap="round">
-        <circle cx="12" cy="12" r="9" />
-        <path d="M9 9l6 6" />
-        <path d="M15 9l-6 6" />
+        <circle cx="12" cy="12" r="9" /><path d="M9 9l6 6" /><path d="M15 9l-6 6" />
+      </svg>
+    );
+  }
+  if (type === 'new_message') {
+    return (
+      <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="#8943F9" strokeWidth={2} strokeLinecap="round">
+        <path d="M21 11.5a8.4 8.4 0 0 1-1.2 4.4L21 20l-4.3-1.1A8.5 8.5 0 1 1 21 11.5Z" />
       </svg>
     );
   }
@@ -49,16 +54,16 @@ function NotificationIcon({ type }: { type: Notification['type'] }): ReactElemen
   );
 }
 
-export function NotificationBell({ userId }: NotificationBellProps): ReactElement {
+export function NotificationBell({ userId, username }: NotificationBellProps): ReactElement {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const supabaseRef = useRef(createSupabaseBrowserClient());
   const supabase = supabaseRef.current;
+  const router = useRouter();
 
   useEffect(() => {
     let isMounted = true;
-
     async function fetchInitial(): Promise<void> {
       const { data } = await supabase
         .from('notifications')
@@ -67,24 +72,13 @@ export function NotificationBell({ userId }: NotificationBellProps): ReactElemen
         .order('created_at', { ascending: false })
         .limit(15)
         .returns<NotificationRow[]>();
-
-      if (isMounted && data) {
-        setNotifications(data.map(mapNotificationFromRow));
-      }
+      if (isMounted && data) setNotifications(data.map(mapNotificationFromRow));
     }
-
-    fetchInitial();
+    void fetchInitial();
 
     const channel = supabase
       .channel('notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${userId}`,
-        },
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
         (payload) => {
           const row = payload.new as NotificationRow;
           setNotifications((prev) => [mapNotificationFromRow(row), ...prev]);
@@ -92,18 +86,13 @@ export function NotificationBell({ userId }: NotificationBellProps): ReactElemen
       )
       .subscribe();
 
-    return () => {
-      isMounted = false;
-      supabase.removeChannel(channel);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { isMounted = false; supabase.removeChannel(channel); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent): void {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) setOpen(false);
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -115,21 +104,22 @@ export function NotificationBell({ userId }: NotificationBellProps): ReactElemen
     setOpen((prev) => !prev);
     if (unreadCount > 0) {
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-      await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('user_id', userId)
-        .eq('read', false);
+      await supabase.from('notifications').update({ read: true }).eq('user_id', userId).eq('read', false);
     }
+  }
+
+  async function handleNotificationClick(notification: Notification): Promise<void> {
+    if (!notification.read) {
+      await supabase.from('notifications').update({ read: true }).eq('id', notification.id);
+      setNotifications((prev) => prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n)));
+    }
+    setOpen(false);
+    if (notification.link) router.push(notification.link);
   }
 
   async function handleMarkAllRead(): Promise<void> {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    await supabase
-      .from('notifications')
-      .update({ read: true })
-      .eq('user_id', userId)
-      .eq('read', false);
+    await supabase.from('notifications').update({ read: true }).eq('user_id', userId).eq('read', false);
   }
 
   return (
@@ -155,27 +145,24 @@ export function NotificationBell({ userId }: NotificationBellProps): ReactElemen
         <div className="absolute right-0 top-10 z-50 w-80 rounded-card border border-white/[0.07] bg-[#111114] shadow-xl">
           <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-3">
             <span className="text-sm font-medium text-[#FAFAFA]">Notifications</span>
-            <button
-              type="button"
-              onClick={handleMarkAllRead}
-              className="text-xs text-[rgba(250,250,250,0.5)] hover:text-white"
-            >
+            <button type="button" onClick={handleMarkAllRead} className="text-xs text-[rgba(250,250,250,0.5)] hover:text-white">
               Mark all read
             </button>
           </div>
 
           <div className="max-h-96 overflow-y-auto">
             {notifications.length === 0 ? (
-              <p className="px-4 py-6 text-center text-sm text-[rgba(250,250,250,0.4)]">
-                No notifications yet
-              </p>
+              <p className="px-4 py-6 text-center text-sm text-[rgba(250,250,250,0.4)]">No notifications yet</p>
             ) : (
               notifications.map((notification) => (
-                <div
+                <button
                   key={notification.id}
+                  type="button"
+                  onClick={() => void handleNotificationClick(notification)}
                   className={cn(
-                    'flex gap-3 border-b border-white/[0.05] px-4 py-3 last:border-b-0',
-                    !notification.read && 'border-l-2 border-l-brand bg-white/[0.03]'
+                    'flex w-full gap-3 border-b border-white/[0.05] px-4 py-3 text-left last:border-b-0 transition-colors hover:bg-white/[0.04]',
+                    !notification.read && 'border-l-2 border-l-brand bg-white/[0.03]',
+                    notification.link && 'cursor-pointer'
                   )}
                 >
                   <span className="mt-0.5 shrink-0">
@@ -186,11 +173,14 @@ export function NotificationBell({ userId }: NotificationBellProps): ReactElemen
                     {notification.content ? (
                       <p className="truncate text-xs text-[rgba(250,250,250,0.5)]">{notification.content}</p>
                     ) : null}
-                    <p className="mt-1 text-[10px] text-[rgba(250,250,250,0.3)]">
-                      {relativeTime(notification.createdAt)}
-                    </p>
+                    <p className="mt-1 text-[10px] text-[rgba(250,250,250,0.3)]">{relativeTime(notification.createdAt)}</p>
                   </div>
-                </div>
+                  {notification.link ? (
+                    <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} className="mt-0.5 shrink-0 text-[rgba(250,250,250,0.3)]">
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
+                  ) : null}
+                </button>
               ))
             )}
           </div>
