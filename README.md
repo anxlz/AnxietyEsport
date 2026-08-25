@@ -1,4 +1,4 @@
-# Anxiety Esports — full project (Phases 1–4 merged)
+# Anxiety Esports — full project
 
 This is the complete, merged codebase across all phases built so far:
 foundation (schema/RLS/auth scaffolding) → Phase 2 (auth + homepage) → Phase 3
